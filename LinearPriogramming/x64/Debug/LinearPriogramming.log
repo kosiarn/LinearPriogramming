@@ -1,0 +1,12 @@
+﻿  LinearPriogramming.cpp
+  simplex.cpp
+c:\users\kryxk\source\repos\linearpriogramming\linearpriogramming\simplex.cpp(5): warning C4267: "inicjowanie": konwersja z "size_t" do "int", możliwa utrata danych
+c:\users\kryxk\source\repos\linearpriogramming\linearpriogramming\simplex.cpp(7): warning C4267: "inicjowanie": konwersja z "size_t" do "int", możliwa utrata danych
+c:\users\kryxk\source\repos\linearpriogramming\linearpriogramming\simplex.cpp(25): warning C4267: "argument": konwersja z "size_t" do "_Ty", możliwa utrata danych
+          with
+          [
+              _Ty=int
+          ]
+c:\users\kryxk\source\repos\linearpriogramming\linearpriogramming\simplex.cpp(39): warning C4267: "inicjowanie": konwersja z "size_t" do "int", możliwa utrata danych
+  Generowanie kodu...
+  LinearPriogramming.vcxproj -> C:\Users\kryxk\source\repos\LinearPriogramming\x64\Debug\LinearPriogramming.exe
