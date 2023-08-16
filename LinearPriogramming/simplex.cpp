@@ -1,11 +1,11 @@
 #include "pch.h"
 #include "simplex.h"
 
-std::vector<std::vector<float>> transpose(std::vector<std::vector<float>>& A) {
+const std::vector<std::vector<float>> &transpose(std::vector<std::vector<float>>& A) {
 	int rows = A.size();
 	if (rows == 0) return { {} };
 	int cols = A[0].size();
-	std::vector<std::vector<float>> r(cols, std::vector<float>(rows));
+	static std::vector<std::vector<float>> r(cols, std::vector<float>(rows));
 	for (int i = 0; i < rows; ++i) {
 		for (int j = 0; j < cols; ++j) {
 			r[j][i] = A[i][j];
@@ -14,11 +14,6 @@ std::vector<std::vector<float>> transpose(std::vector<std::vector<float>>& A) {
 	return r;
 }
 
-/*
-	constexpr auto SIMPLEX_BASE = 1;
-	constexpr auto SIMPLEX_OPTIMAL = 2;
-	constexpr auto SIMPLEX_CONTRADICTORY = 3;
-*/
 bool linear_programming::table_isUniformSize(std::vector<std::vector<float>> table) {
 	std::vector<int> lengths = { };
 	for (auto &row : table) {
@@ -41,10 +36,11 @@ bool linear_programming::isBase(std::vector<std::vector<float>> table)
 		if (table[i][0] < 0) return false;
 	}
 	std::vector<std::vector<float>> a_matrix = retrieveAMatrix(table);
-	std::vector<int> identity_matrix_columns = getIdentityMatrix(a_matrix);
-	if (identity_matrix_columns.empty()) return false;
+	
+	
 	std::vector<float> target_function_coefficients = table[0];
 	target_function_coefficients.erase(target_function_coefficients.begin()); //deleting -d
+	std::vector<int> identity_matrix_columns = linear_programming::getIdentityMatrix(linear_programming::retrieveAMatrix(table));
 	for (auto &column : identity_matrix_columns) {
 		if (target_function_coefficients[column] != 0) return false;
 	}
@@ -88,48 +84,129 @@ std::vector<std::vector<float>>
 }
 
 
-std::vector<int> linear_programming::getIdentityMatrix(std::vector<std::vector<float>> input_matrix)
-{
-	std::vector<std::vector<float>> a_matrix = transpose(input_matrix); //we want data in columns
-	int matrix_width = static_cast<int>(a_matrix.size());
-	std::vector<int> column_is_from_identity{};
-	for (int i = 0; i < matrix_width; i++) {
-		column_is_from_identity.push_back(0);
+
+bool targetFunctionHasPositiveCoefficientsOnly(std::vector<float> target_function_row){
+	for (float coeff : target_function_row) {
+		if (coeff < 0) return false;
 	}
-	//for values different than one we add a weight bigger than one
-	//the idea is that if we get value above 1, then it can't be a column of
-	//identity matrix.
-	int row_amount = static_cast<int>(a_matrix[0].size());
-	for (int i = 0; i < matrix_width; i++) {
-		for (int j = 0; j < row_amount; j++) {
-			if (a_matrix[i][j] == static_cast<float>(1)) column_is_from_identity[i] +=1;
-			else if (a_matrix[i][j] == static_cast<float>(0)) column_is_from_identity[i] +=0;
-			else column_is_from_identity[i] +=matrix_ops::NON_IDENTITY_MATRIX_VALUE_WEIGHT; 
+	return true;
+}
+
+int getRotationColumn(std::vector<float> target_function_coeffs) {
+	int rotation_column = 1;
+	const int table_x_variables_offset = 1;
+	for (int variable_index = 0; variable_index < static_cast<int>(target_function_coeffs.size()); variable_index++) {
+		if (target_function_coeffs[variable_index] < 0) {
+			rotation_column = variable_index + table_x_variables_offset;
+			break;
 		}
 	}
-	std::vector<int> identity_indices{};
-	for (int i = 0; i < matrix_width; i++) {
-		if (column_is_from_identity[i] == 1) identity_indices.push_back(i);
+	return rotation_column;
+}
+
+int getRotationRow(std::vector<std::vector<float>> table, int rotation_column) {
+	std::vector<float> ratios = {};
+	table.erase(table.begin()); //nie przeprowadzamy obrotu w pierwszym wierszu; usuwam go
+		for (std::vector<float> row : table) {
+			ratios.push_back(row[0] / row[rotation_column]);
 	}
-	//return column_is_from_identity;
-	if (static_cast<int>(column_is_from_identity.size()) < row_amount) return {};
-	std::vector<int> identity_ones_positions{};
-	for (auto &index : identity_indices) {
-		for (int row_index = 0; row_index < row_amount; row_index++) {
-			if (a_matrix[index][row_index] == 1) {
-				identity_ones_positions.push_back(row_index);
-				continue;
+	std::vector<float> ratios_filtered = {}; //ilorazy wierszy, w których wspó³czynnik w kolumnie obrotu jest dodatni
+	for (int tested_row = 0; tested_row < static_cast<int>(table.size()); tested_row++) {
+		if (table[tested_row][rotation_column] > 0) {
+			ratios_filtered.push_back(ratios[tested_row]);
+		}
+	}
+	float minimum_ratio = *std::min_element(std::begin(ratios_filtered), std::end(ratios_filtered));
+	const int restrictions_begin_offset = 1; //ograniczenia zaczynaj¹ siê jeden wiersz poni¿ej funkcji celu
+	for (
+		int minimal_ratio_row_index = 0;
+		minimal_ratio_row_index < static_cast<int>(ratios.size());
+		minimal_ratio_row_index++
+		)
+	{
+		if (ratios[minimal_ratio_row_index] == minimum_ratio) {
+			return minimal_ratio_row_index + restrictions_begin_offset;
+		}
+	}
+	return -1;
+}
+
+std::vector<std::vector<float>> 
+	linear_programming::solveProblem(std::vector<std::vector<float>> table) {
+	if (!linear_programming::isBase(table)) {
+		throw std::invalid_argument("Tablica nie jest w postaci bazowej");
+	}
+	std::vector<std::vector<float>> current_table = table;
+	std::vector<std::vector<float>> current_table_rotated = table;
+	while (true) {
+		std::vector<float> target_function_row = current_table[0];
+		target_function_row.erase(target_function_row.begin()); //usuwam -d
+		if (targetFunctionHasPositiveCoefficientsOnly(target_function_row)) break;
+		int rotation_column = getRotationColumn(target_function_row);
+		int rotation_row = getRotationRow(current_table, rotation_column);
+		current_table_rotated = linear_programming::rotateTable(
+			current_table, rotation_row, rotation_column);
+		current_table = current_table_rotated;
+	}
+	return current_table;
+}
+
+
+std::vector<int> linear_programming::getIdentityMatrix(std::vector<std::vector<float>> table) {
+	const int no_identity_value_index = -1;
+	std::vector<std::vector<float>> table_columns = transpose(table);
+	std::vector<int> column_identity_value_position{};
+	for (int column = 0; column < static_cast<int>(table_columns.size()); column++) {
+		column_identity_value_position.push_back(no_identity_value_index);
+	}
+	for (int column_index = 0;
+		column_index < static_cast<int>(table_columns.size());
+		column_index++) {
+		for (int row_index = 0; row_index < static_cast<int>(table_columns[column_index].size()); row_index++) {
+			float value = table_columns[column_index][row_index];
+			if (value != 0 && value != 1) {
+				column_identity_value_position[column_index] = no_identity_value_index;
+				break;
+			}
+			if (value == 1) {
+				if (column_identity_value_position[column_index] != no_identity_value_index) {
+					column_identity_value_position[column_index] = no_identity_value_index;
+					break;
+				}
+				else {
+					column_identity_value_position[column_index] = row_index;
+				}
 			}
 		}
 	}
-	
-	std::sort(identity_ones_positions.begin(), identity_ones_positions.end());
-	
-	for (int n = 0; n < static_cast<int>(identity_ones_positions.size()) - 1; n++) {
-		if (identity_ones_positions[n + 1] != identity_ones_positions[n] + 1)
-		{
-			return {};
-		}
+	/*
+	uzyskanie indeksów wierszy, w których znajduj¹ siê jedynki macierzy jednostkowej
+	*/
+	std::vector<int> column_identity_value_position_filtered = column_identity_value_position;
+	std::vector<int>::iterator ip;
+	int vector_size = static_cast<int>(column_identity_value_position_filtered.size());
+	std::sort(column_identity_value_position_filtered.begin(), column_identity_value_position_filtered.begin() + vector_size);
+	ip = std::unique(column_identity_value_position_filtered.begin(), column_identity_value_position_filtered.end());
+	column_identity_value_position_filtered.resize(std::distance(column_identity_value_position_filtered.begin(), ip));
+	if (column_identity_value_position_filtered[0] == no_identity_value_index) {
+		column_identity_value_position_filtered.erase(column_identity_value_position_filtered.begin());
 	}
-	return identity_indices;
+	int identity_matrix_column_amount = static_cast<int>(column_identity_value_position_filtered.size());
+	int table_row_amount = static_cast<int>(table.size());
+	if (identity_matrix_column_amount < table_row_amount) {
+		return {};
+	}
+	else {
+		std::vector<int> identity_indices{};
+		int table_column_amount = static_cast<int>(table_columns.size());
+			for (int identity_row_index : column_identity_value_position_filtered) {
+				for (int column_index = 0; column_index < table_column_amount; column_index++) {
+					if (column_identity_value_position[column_index] == identity_row_index) {
+						identity_indices.push_back(column_index);
+						break;
+					}
+				}
+			}
+			return identity_indices;
+	}
 }
