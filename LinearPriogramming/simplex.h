@@ -4,16 +4,6 @@
 #include <vector>
 #include <algorithm>
 
-/*
-TODO List:
-
-- checking if the table is even: done
-- rotating table: done
-- checking if it's optimal: fuuucking done
-- checking if it's contradictory
-*/
-
-
 
 
 namespace linear_programming{
