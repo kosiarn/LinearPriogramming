@@ -14,11 +14,6 @@ std::vector<std::vector<float>> transpose(std::vector<std::vector<float>>& A) {
 	return r;
 }
 
-/*
-	constexpr auto SIMPLEX_BASE = 1;
-	constexpr auto SIMPLEX_OPTIMAL = 2;
-	constexpr auto SIMPLEX_CONTRADICTORY = 3;
-*/
 bool linear_programming::table_isUniformSize(std::vector<std::vector<float>> table) {
 	std::vector<int> lengths = { };
 	for (auto &row : table) {
