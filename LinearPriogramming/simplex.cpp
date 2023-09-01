@@ -110,14 +110,14 @@ int getRotationRow(std::vector<std::vector<float>> table, int rotation_column) {
 		for (std::vector<float> row : table) {
 			ratios.push_back(row[0] / row[rotation_column]);
 	}
-	std::vector<float> ratios_filtered = {}; //ilorazy wierszy, w których wspó³czynnik w kolumnie obrotu jest dodatni
+	std::vector<float> ratios_filtered = {}; //ilorazy wierszy, w ktï¿½rych wspï¿½czynnik w kolumnie obrotu jest dodatni
 	for (int tested_row = 0; tested_row < static_cast<int>(table.size()); tested_row++) {
 		if (table[tested_row][rotation_column] > 0) {
 			ratios_filtered.push_back(ratios[tested_row]);
 		}
 	}
 	float minimum_ratio = *std::min_element(std::begin(ratios_filtered), std::end(ratios_filtered));
-	const int restrictions_begin_offset = 1; //ograniczenia zaczynaj¹ siê jeden wiersz poni¿ej funkcji celu
+	const int restrictions_begin_offset = 1; //ograniczenia zaczynajï¿½ siï¿½ jeden wiersz poniï¿½ej funkcji celu
 	for (
 		int minimal_ratio_row_index = 0;
 		minimal_ratio_row_index < static_cast<int>(ratios.size());
@@ -180,7 +180,7 @@ std::vector<int> linear_programming::getIdentityMatrix(std::vector<std::vector<f
 		}
 	}
 	/*
-	uzyskanie indeksów wierszy, w których znajduj¹ siê jedynki macierzy jednostkowej
+	uzyskanie indeksï¿½w wierszy, w ktï¿½rych znajdujï¿½ siï¿½ jedynki macierzy jednostkowej
 	*/
 	std::vector<int> column_identity_value_position_filtered = column_identity_value_position;
 	std::vector<int>::iterator ip;
